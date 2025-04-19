@@ -35,7 +35,7 @@ export default function ManageLeaves() {
   useEffect(() => {
     const fetchLeaves = async () => {
       try {
-        const response = await fetch('http://demo-expense.geomaticxevs.in/ET-api/manage_leaves.php');
+        const response = await fetch('https://demo-expense.geomaticxevs.in/ET-api/manage_leaves.php');
         const data = await response.json();
 
         if (Array.isArray(data)) {
@@ -88,7 +88,7 @@ export default function ManageLeaves() {
       }
 
       const response = await fetch(
-        'http://demo-expense.geomaticxevs.in/ET-api/approve_reject_leaves.php',
+        'https://demo-expense.geomaticxevs.in/ET-api/approve_reject_leaves.php',
         {
           method: 'POST',
           headers: {

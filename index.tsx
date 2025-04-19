@@ -48,16 +48,19 @@ export default function LoginScreen() {
     }
   }, [fontsLoaded]);
 
-  const validateEmail = (email: string) => {
+  const validateEmailOrPhone = (value: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      setEmailError('Email is required');
+    const phoneRegex = /^[0-9]{10}$/;
+  
+    if (!value) {
+      setEmailError('Email or phone number is required');
       return false;
     }
-    if (!emailRegex.test(email)) {
-      setEmailError('Please enter a valid email');
+    if (!emailRegex.test(value) && !phoneRegex.test(value)) {
+      setEmailError('Please enter a valid email or 10-digit phone number');
       return false;
     }
+  
     setEmailError('');
     return true;
   };
@@ -76,13 +79,13 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
-    const isEmailValid = validateEmail(email);
+    const isEmailValid = validateEmailOrPhone(email);
     const isPasswordValid = validatePassword(password);
 
     if (isEmailValid && isPasswordValid) {
       setLoading(true);
       try {
-        const response = await fetch('http://demo-expense.geomaticxevs.in/ET-api/login.php', {
+        const response = await fetch('https://demo-expense.geomaticxevs.in/ET-api/login.php', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -93,7 +96,6 @@ export default function LoginScreen() {
 
         if (data.status === 'success') {
           setLoginError('');
-          // Store userid, roleId, and currentLoginTime in AsyncStorage
           await Promise.all([
             AsyncStorage.setItem('userid', data.data.userid.toString()),
             AsyncStorage.setItem('roleId', data.data.role_id.toString()),
@@ -119,106 +121,98 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar style="dark" />
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.content}>
-          <Image
-            source={require('../assets/images/GM-Logo.png')}
-            style={styles.logo}
-          />
-          <Text style={styles.title}>Login</Text>
-
-          <View style={styles.form}>
-            {loginError ? (
-              <Text style={styles.errorText}>{loginError}</Text>
-            ) : null}
-
-            <TextInput
-              style={[styles.input, emailError && styles.inputError]}
-              placeholder="E-mail or Telephone Number"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (emailError) validateEmail(text);
-              }}
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: 'center',
+            padding: 24,
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={{ alignItems: 'center' }}>
+            <Image
+              source={require('../assets/images/GM-Logo.png')}
+              style={styles.logo}
             />
-            {emailError ? (
-              <Text style={styles.errorText}>{emailError}</Text>
-            ) : null}
+            <Text style={styles.title}>Login</Text>
 
-            <View
-              style={[
-                styles.passwordContainer,
-                passwordError && styles.inputError,
-              ]}
-            >
+            <View style={styles.form}>
+              {loginError ? (
+                <Text style={styles.errorText}>{loginError}</Text>
+              ) : null}
+
               <TextInput
-                style={styles.passwordInput}
-                placeholder="Password"
-                secureTextEntry={!showPassword}
-                value={password}
+                style={[styles.input, emailError && styles.inputError]}
+                placeholder="E-mail or Telephone Number"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                value={email}
                 onChangeText={(text) => {
-                  setPassword(text);
-                  if (passwordError) validatePassword(text);
+                  setEmail(text);
+                  if (emailError) validateEmailOrPhone(text);
                 }}
               />
-              <Pressable
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
-              >
-                {showPassword ? (
-                  <EyeOff size={20} color="#666" />
-                ) : (
-                  <Eye size={20} color="#666" />
-                )}
-              </Pressable>
-            </View>
-            {passwordError ? (
-              <Text style={styles.errorText}>{passwordError}</Text>
-            ) : null}
+              {emailError ? (
+                <Text style={styles.errorText}>{emailError}</Text>
+              ) : null}
 
-            <TouchableOpacity
-              style={styles.loginButton}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.loginButtonText}>Log in</Text>
-              )}
-            </TouchableOpacity>
+              <View
+                style={[
+                  styles.passwordContainer,
+                  passwordError && styles.inputError,
+                ]}
+              >
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Password"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (passwordError) validatePassword(text);
+                  }}
+                />
+                <Pressable
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color="#666" />
+                  ) : (
+                    <Eye size={20} color="#666" />
+                  )}
+                </Pressable>
+              </View>
+              {passwordError ? (
+                <Text style={styles.errorText}>{passwordError}</Text>
+              ) : null}
+
+              <TouchableOpacity
+                style={styles.loginButton}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.loginButtonText}>Log in</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    height: '100%',
-  },
-  scrollContainer: {
-    flexGrow: 1,
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   logo: {
     width: 120,
     height: 120,
@@ -235,15 +229,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
   },
-  errorContainer: {
-    backgroundColor: '#FEE2E2',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
   input: {
     height: 48,
     borderWidth: 1,
@@ -253,7 +238,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     backgroundColor: '#fff',
-    marginBottom: 16, // Add spacing between inputs
+    marginBottom: 16,
   },
   inputError: {
     borderColor: '#ff4444',
@@ -272,7 +257,7 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
     borderRadius: 8,
     backgroundColor: '#fff',
-    marginBottom: 24, // Add spacing below the password field
+    marginBottom: 24,
   },
   passwordInput: {
     flex: 1,
@@ -284,79 +269,17 @@ const styles = StyleSheet.create({
   eyeIcon: {
     padding: 12,
   },
-  forgotPassword: {
-    color: '#007AFF',
-    fontSize: 14,
-    textAlign: 'right',
-    marginBottom: 24,
-    fontFamily: 'Inter-Medium',
-  },
   loginButton: {
     backgroundColor: '#007AFF',
     height: 48,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24, // Optional: Add spacing below the login button
+    marginBottom: 24,
   },
   loginButtonText: {
     color: '#fff',
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e0e0e0',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: '#666',
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-  },
-  socialButtons: {
-    gap: 12,
-  },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 48,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#fff',
-  },
-  socialIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 12,
-    resizeMode: 'contain',
-  },
-  socialButtonText: {
-    fontSize: 14,
-    color: '#1a1a1a',
-    fontFamily: 'Inter-Medium',
-  },
-  footer: {
-    flexDirection: 'row',
-    marginTop: 32,
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#666',
-    fontFamily: 'Inter-Regular',
-  },
-  signUpText: {
-    fontSize: 14,
-    color: '#007AFF',
-    fontFamily: 'Inter-Medium',
   },
 });

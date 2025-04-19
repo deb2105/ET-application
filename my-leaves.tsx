@@ -29,36 +29,35 @@ export default function MyLeaves() {
   useEffect(() => {
     const fetchLeaves = async () => {
       const userid = await AsyncStorage.getItem('userid');
+      console.log('User ID:', userid);
       if (!userid) {
         console.error('User ID not found in AsyncStorage');
         setLoading(false);
         return;
       }
-
+    
       try {
-        const response = await fetch(
-          `http://demo-expense.geomaticxevs.in/ET-api/my-leaves.php?userId=${userid}`,
-          {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-              Accept: 'application/json',
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+        console.log('User ID223:', userid);
+        const response = await fetch(`https://demo-expense.geomaticxevs.in/ET-api/my-leaves.php?userId=${userid}`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        });
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json();
+        const data = await response.json(); // Parse the response as JSON
+        console.log('Fetched leaves:', data);
 
         if (data.status === 'error') {
-          // Handle the case where no records are found
-          console.warn('No leave records found:', data.message);
-          setLeaves([]); // Clear the leaves array
-          setNoRecords(true); // Set the noRecords state to true
+          console.error('API Error:', data.message);
+          setLeaves([]); // Clear the leaves if there's an error
+          setNoRecords(true); // Set no records state
         } else if (Array.isArray(data)) {
           const mappedData = data.map((leave: any) => ({
             leave_id: leave.leave_id,
@@ -69,7 +68,7 @@ export default function MyLeaves() {
             leave_comment: leave.leave_comment,
           }));
           setLeaves(mappedData as LeaveRequest[]);
-          setNoRecords(false); // Reset the noRecords state
+          setNoRecords(false); // Reset no records state
         } else {
           console.error('Unexpected response format:', data);
         }
@@ -239,49 +238,44 @@ const styles = StyleSheet.create({
   statsCard: {
     backgroundColor: 'white',
     borderRadius: 12,
-    padding: 8,
-    marginBottom: 14,
+    padding: 16,
+    marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
-    // display: 'flex',
-    // flexDirection: 'column',
-    
   },
   statsTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: '#1e293b',
-    marginBottom: 15,
+    marginBottom: 16,
   },
   statsGrid: {
-    display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   statItem: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
   statCount: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: '#1e293b',
     marginTop: 8,
   },
   statLabel: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#64748b',
-    margin: 3,
+    marginTop: 4,
   },
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: 'white',
     borderRadius: 8,
     padding: 4,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   tab: {
     flex: 1,

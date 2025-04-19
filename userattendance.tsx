@@ -124,8 +124,8 @@ export default function UserAttendanceScreen() {
   ) => {
     try {
       const baseUrl = Platform.select({
-        web: 'http://demo-expense.geomaticxevs.in/ET-api',
-        default: 'http://demo-expense.geomaticxevs.in/ET-api',
+        web: 'https://demo-expense.geomaticxevs.in/ET-api',
+        default: 'https://demo-expense.geomaticxevs.in/ET-api',
       });
 
       const requestBody = userId
@@ -175,8 +175,8 @@ export default function UserAttendanceScreen() {
 
   const handleTrackUser = (attnId: string) => {
     const baseUrl = Platform.select({
-      web: 'http://localhost:8081',
-      default: 'http://192.168.1.148:8081',
+      web: 'https://demo-expense.geomaticxevs.in/ET-api',
+      default: 'https://demo-expense.geomaticxevs.in/ET-api',
     });
     const url = `${baseUrl}/monitoring.php?attn_id=${attnId}`;
 
@@ -610,7 +610,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ededed',
+    backgroundColor: '#f9fafb',
     borderRadius: 8,
     paddingHorizontal: 12,
     margin: 16,
@@ -624,20 +624,17 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   tableHeader: {
-    justifyContent: 'space-evenly',
-    alignItems: 'center',
     flexDirection: 'row',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
-    backgroundColor: '#d4cdfa',
-
+    backgroundColor: '#f9fafb',
   },
   headerCell: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#111827',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
     textTransform: 'uppercase',
     paddingHorizontal: 8,
   },

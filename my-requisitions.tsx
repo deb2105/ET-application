@@ -48,7 +48,7 @@ export default function MyRequisitions() {
         return;
       }
 
-      const response = await fetch('http://demo-expense.geomaticxevs.in/ET-api/my-requisitions.php', {
+      const response = await fetch('https://demo-expense.geomaticxevs.in/ET-api/my-requisitions.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -250,11 +250,11 @@ const styles = StyleSheet.create({
   statsCard: {
     backgroundColor: 'white',
     borderRadius: 12,
-    padding: 8,
-    marginBottom: 14,
+    padding: 16,
+    marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   statLabel: {
-    fontSize: 13.5,
+    fontSize: 14,
     color: '#64748b',
     marginTop: 4,
   },

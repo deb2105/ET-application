@@ -30,37 +30,32 @@ export default function MyExpenses() {
     const fetchExpenses = async () => {
       const userId = await AsyncStorage.getItem('userid');
       if (!userId) {
-        console.warn('User ID not found in AsyncStorage');
+        console.error('User ID not found in AsyncStorage');
         setLoading(false);
         return;
       }
 
       try {
-        const response = await fetch(
-          `http://demo-expense.geomaticxevs.in/ET-api/my-expenses.php?userId=${userId}`,
-          {
-            method: 'GET',
-            headers: {
-              Accept: 'application/json',
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+        const response = await fetch(`https://demo-expense.geomaticxevs.in/ET-api/my-expenses.php?userId=${userId}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        });
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
-
         if (data.status === 'error') {
-          // Handle the "no records" case gracefully
-          console.warn('No expense records found:', data.message);
-          setExpenses([]); // Clear the expenses array
-          setNoRecords(true); // Set the noRecords state to true
+          console.error('API Error:', data.message);
+          setExpenses([]);
+          setNoRecords(true);
         } else if (Array.isArray(data)) {
           setExpenses(data);
-          setNoRecords(false); // Reset the noRecords state
+          setNoRecords(false);
         } else {
           console.error('Unexpected response format:', data);
         }
@@ -145,7 +140,7 @@ export default function MyExpenses() {
               {getStatusIcon(expense.expense_status)}
             </View>
             <Text style={styles.expenseType}>Type: {expense.expense_type}</Text>
-            <Text style={styles.expenseAmount}>Amount: ${expense.expense_amount}</Text>
+            <Text style={styles.expenseAmount}>Amount: ₹{expense.expense_amount}</Text>
             <Text style={styles.expenseDate}>Date: {expense.expense_date}</Text>
             <Text style={styles.expenseComment}>Comment: {expense.expense_comment}</Text>
           </View>

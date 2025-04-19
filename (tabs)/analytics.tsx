@@ -13,7 +13,7 @@ const CARD_GAP = 12;
 
 const fetchAttendanceData = async (userId: number, startDate: string, endDate: string) => {
   try {
-    const response = await fetch('http://demo-expense.geomaticxevs.in/ET-api/fetch_analytics.php', {
+    const response = await fetch('https://demo-expense.geomaticxevs.in/ET-api/fetch_analytics.php', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -262,6 +262,8 @@ export default function StatsScreen() {
   });
   const [workHours, setWorkHours] = useState<number | null>(null); // Define workHours state
   const [userId, setUserId] = useState<number | null>(null);
+  const [averageWorkHours, setAverageWorkHours] = useState<number | null>(null); 
+  // Define averageWorkHours state
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState('Last Week');
   const [items, setItems] = useState([
@@ -289,8 +291,8 @@ export default function StatsScreen() {
   }, []);
 
   const loadData = useCallback(async (period: string, customStart?: Date | null, customEnd?: Date | null) => {
-    if (!userId || (!period && (!customStart || !customEnd))) return;
-     // Ensure valid input
+    if (!userId || (!period && (!customStart || !customEnd))) return; 
+    // Ensure valid input
     setLoading(true);
     setError(null);
 
@@ -404,6 +406,10 @@ export default function StatsScreen() {
       attendanceRate: '0%',
       trend: '+0%',
     });
+    // setWorkHours(null); 
+    // setAverageWorkHours(null); 
+    // Reset Work Hours to null
+    // Reset Daily Average to null
     setError(null);
   };
 
@@ -417,8 +423,7 @@ export default function StatsScreen() {
       onError={(error, info) => console.error('Error caught:', error, info)}
     >
       <FlatList
-        data={[{ key: 'content' }]} 
-        // Dummy data to render the content
+        data={[{ key: 'content' }]} // Dummy data to render the content
         renderItem={() => (
           <View style={styles.content}>
             <View style={styles.headerContainer}>
@@ -522,7 +527,7 @@ export default function StatsScreen() {
 
             <View style={styles.statsGrid}>
               <StatCard
-                icon={<Calendar size={24} color="#0891b2" />}
+                icon={<Calendar size={34} color="#0891b2" />}
                 title="Total Working Days"
                 value={stats.totalDays}
                 subValue={stats.trend}
@@ -590,6 +595,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#0f172a',
     marginBottom: 5,
+    fontWeight: 'bold',
   },
   filterContainer: {
     flexDirection: 'row',
@@ -626,6 +632,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: 40,
+    
 
   },
   statsGrid: {
@@ -668,7 +675,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 14,
     color: '#64748b',
-    marginBottom: 3,
+    marginBottom: 4,
   },
   cardValue: {
     fontSize: 24,

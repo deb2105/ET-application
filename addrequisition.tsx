@@ -7,39 +7,113 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import RNPickerSelect from 'react-native-picker-select';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface Role {
+  label: string;
+  value: string;
+}
+
+interface User {
+  label: string;
+  value: string;
+}
+
+interface FetchRolesResponse {
+  status: string;
+  message?: string;
+  roles?: Role[];
+}
+
+interface FetchUsersResponse {
+  status: string;
+  message?: string;
+  users?: Array<{ id: number; name: string }>;
+}
 
 export default function AddRequisitionScreen() {
-  const [userId, setUserId] = useState(''); // Dynamically fetched user ID
+  const [userId, setUserId] = useState('');
   const [requisitionTitle, setRequisitionTitle] = useState('');
   const [requisitionDesc, setRequisitionDesc] = useState('');
   const [requisitionAmount, setRequisitionAmount] = useState('');
-  const [submittedTo, setSubmittedTo] = useState('');
+  const [submittedToName, setSubmittedToName] = useState('');
+  const [submittedToId, setSubmittedToId] = useState('');
   const [responseMessage, setResponseMessage] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState('');
+  const [users, setUsers] = useState<User[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const filteredUsers = users.filter((user) =>
+    user.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   useEffect(() => {
-    // Fetch user ID from AsyncStorage
-    const fetchUserId = async () => {
+    const fetchData = async () => {
       try {
-        const storedUserId = await AsyncStorage.getItem('userid'); // Fetch userId from AsyncStorage
-        if (storedUserId) {
-          setUserId(storedUserId); // Set the userId state
+        // Fetch user ID
+        const storedUserId = await AsyncStorage.getItem('userid');
+        if (storedUserId) setUserId(storedUserId);
+
+        // Fetch roles
+        setLoadingRoles(true);
+        const response = await fetch('https://demo-expense.geomaticxevs.in/ET-api/add_requisition.php?fetch_roles=true');
+        const data: FetchRolesResponse = await response.json();
+
+        if (response.ok && data.status === 'success' && data.roles) {
+          setRoles(data.roles);
         } else {
-          console.error('User ID not found in AsyncStorage');
+          Alert.alert('Error', data.message || 'Failed to load roles');
         }
       } catch (error) {
-        console.error('Failed to fetch user ID from AsyncStorage:', error);
+        Alert.alert('Error', 'Network error. Please try again.');
+      } finally {
+        setLoadingRoles(false);
       }
     };
 
-    fetchUserId();
+    fetchData();
   }, []);
 
+  useEffect(() => {
+    if (selectedRoleId) {
+      fetchUsersByRole(selectedRoleId);
+    }
+  }, [selectedRoleId]);
+
+  const fetchUsersByRole = async (roleId: string) => {
+    try {
+      setLoadingUsers(true);
+      setUsers([]);
+      setSubmittedToName('');
+      setSubmittedToId('');
+      
+      const response = await fetch(`https://demo-expense.geomaticxevs.in/ET-api/add_requisition.php?role_id=${roleId}`);
+      const result: FetchUsersResponse = await response.json();
+
+      if (response.ok && result.status === 'success' && result.users) {
+        const userOptions = result.users.map(user => ({
+          label: user.name,
+          value: user.id.toString()
+        }));
+        setUsers(userOptions);
+      } else {
+        Alert.alert('Error', result.message || 'No users found for this role');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Network error. Please try again.');
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!requisitionTitle || !requisitionDesc || !requisitionAmount || !submittedTo) {
+    if (!requisitionTitle || !requisitionDesc || !requisitionAmount || !submittedToId) {
       setResponseMessage('Error: Please fill in all required fields');
       setIsSubmitted(true);
       return;
@@ -49,12 +123,12 @@ export default function AddRequisitionScreen() {
       requisition_title: requisitionTitle,
       requisition_desc: requisitionDesc,
       requisition_req_amount: requisitionAmount,
-      requisition_submitted_to: submittedTo,
-      requisition_created_by: userId, // Use the dynamically fetched userId
+      requisition_submitted_to: submittedToId,
+      requisition_created_by: userId,
     };
 
     try {
-      const response = await fetch('http://demo-expense.geomaticxevs.in/ET-api/add_requisition.php', {
+      const response = await fetch('https://demo-expense.geomaticxevs.in/ET-api/add_requisition.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -67,6 +141,14 @@ export default function AddRequisitionScreen() {
       if (response.ok && result.status === 'success') {
         setResponseMessage(result.message);
         setIsSubmitted(true);
+        // Clear form after successful submission
+        setRequisitionTitle('');
+        setRequisitionDesc('');
+        setRequisitionAmount('');
+        setSelectedRoleId('');
+        setUsers([]);
+        setSubmittedToName('');
+        setSubmittedToId('');
       } else {
         setResponseMessage(result.message || 'Failed to submit requisition');
         setIsSubmitted(true);
@@ -105,32 +187,107 @@ export default function AddRequisitionScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Requisition Amount *</Text>
-          <TextInput
-            style={styles.input}
-            value={requisitionAmount}
-            onChangeText={setRequisitionAmount}
-            placeholder="Enter Amount"
-            keyboardType="decimal-pad"
-          />
-        </View>
+  <Text style={styles.label}>Requisition Amount *</Text>
+  <TextInput
+    style={styles.input}
+    value={requisitionAmount}
+    onChangeText={(text) => {
+      // Allow only integers
+      const sanitizedText = text.replace(/[^0-9]/g, '');
+      setRequisitionAmount(sanitizedText);
+    }}
+    placeholder="Enter Amount"
+    keyboardType="numeric" // Ensures numeric keyboard is displayed
+  />
+</View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Submitted To *</Text>
-          <TextInput
-            style={styles.input}
-            value={submittedTo}
-            onChangeText={setSubmittedTo}
-            placeholder="Enter Recipient"
-          />
+          <Text style={styles.label}>Recipient Role *</Text>
+          {loadingRoles ? (
+            <ActivityIndicator size="small" color="#007AFF" />
+          ) : (
+            <RNPickerSelect
+              onValueChange={(value) => setSelectedRoleId(value)}
+              items={roles}
+              value={selectedRoleId}
+              placeholder={{ label: 'Select a role...', value: null }}
+              style={{
+                ...pickerSelectStyles,
+                inputAndroidContainer: {
+                  maxHeight: 200, // Limit the height for scrolling
+                },
+                inputIOSContainer: {
+                  maxHeight: 200, // Limit the height for scrolling
+                },
+              }}
+            />
+          )}
         </View>
 
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+        {selectedRoleId && (
+          <>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Recipient Name *</Text>
+              {loadingUsers ? (
+                <ActivityIndicator size="small" color="#007AFF" />
+              ) : (
+                <RNPickerSelect
+                  onValueChange={(value, index) => {
+                    setSubmittedToName(users[index]?.label || '');
+                    setSubmittedToId(value);
+                  }}
+                  items={users.map((user) => ({
+                    label: user.label,
+                    value: user.value,
+                  }))}
+                  value={submittedToId}
+                  placeholder={{
+                    label: users.length
+                      ? 'Select a recipient...'
+                      : 'No users available',
+                    value: null,
+                  }}
+                  style={{
+                    ...pickerSelectStyles,
+                    inputIOS: {
+                      ...pickerSelectStyles.inputIOS,
+                      height: 50, // Increase height for better visibility
+                      fontSize: 18, // Larger font size
+                    },
+                    inputAndroid: {
+                      ...pickerSelectStyles.inputAndroid,
+                      height: 50, // Increase height for better visibility
+                      fontSize: 18, // Larger font size
+                    },
+                  }}
+                  disabled={users.length === 0}
+                />
+              )}
+            </View>
+          </>
+        )}
+
+        <TouchableOpacity
+          style={[
+            styles.submitButton,
+            (!requisitionTitle || !requisitionDesc || !requisitionAmount || !submittedToId) && styles.disabledButton,
+          ]}
+          onPress={handleSubmit}
+          disabled={!requisitionTitle || !requisitionDesc || !requisitionAmount || !submittedToId}
+        >
           <Text style={styles.submitButtonText}>Submit Requisition</Text>
         </TouchableOpacity>
 
         {isSubmitted && (
-          <Text style={styles.responseMessage}>{responseMessage}</Text>
+          <Text
+            style={[
+              styles.responseMessage,
+              responseMessage.includes('Error') ? styles.errorMessage : styles.successMessage,
+            ]}
+          >
+            {responseMessage}
+          </Text>
         )}
       </View>
     </ScrollView>
@@ -158,7 +315,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 20,
     color: '#333',
-    textAlign: 'center', // Center the title
+    textAlign: 'center',
   },
   inputGroup: {
     marginBottom: 20,
@@ -189,6 +346,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
   },
+  disabledButton: {
+    backgroundColor: '#cccccc',
+  },
   submitButtonText: {
     color: '#fff',
     fontSize: 18,
@@ -198,6 +358,37 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontSize: 16,
     textAlign: 'center',
-    color: '#333',
+  },
+  errorMessage: {
+    color: '#ff4444',
+  },
+  successMessage: {
+    color: '#00C851',
+  },
+});
+
+const pickerSelectStyles = StyleSheet.create({
+  inputIOS: {
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    fontSize: 16,
+    color: 'black',
+  },
+  inputAndroid: {
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    fontSize: 16,
+    color: 'black',
+  },
+  placeholder: {
+    color: '#9EA0A4',
   },
 });

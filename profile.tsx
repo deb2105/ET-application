@@ -60,7 +60,7 @@ const ProfileScreen = () => {
         }
 
         // Fetch user data
-        const response = await fetch('http://demo-expense.geomaticxevs.in/ET-api/dashboard.php', {
+        const response = await fetch('https://demo-expense.geomaticxevs.in/ET-api/dashboard.php', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -92,7 +92,7 @@ const ProfileScreen = () => {
 
     const fetchUserRole = async (userId: string) => {
       try {
-        const response = await fetch('http://demo-expense.geomaticxevs.in/ET-api/user_role_fetcher.php', {
+        const response = await fetch('https://demo-expense.geomaticxevs.in/ET-api/user_role_fetcher.php', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -186,7 +186,7 @@ const ProfileScreen = () => {
 
       // Send update request
       const response = await fetch(
-        'http://demo-expense.geomaticxevs.in/ET-api/profile_user_info_changer.php',
+        'https://demo-expense.geomaticxevs.in/ET-api/profile_user_info_changer.php',
         {
           method: 'POST',
           headers: {

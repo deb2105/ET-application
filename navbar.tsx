@@ -116,7 +116,7 @@ const Navbar = () => {
           return;
         }
 
-        const response = await fetch('http://demo-expense.geomaticxevs.in/ET-api/dashboard.php', {
+        const response = await fetch('https://demo-expense.geomaticxevs.in/ET-api/dashboard.php', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

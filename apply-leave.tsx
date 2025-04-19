@@ -8,6 +8,8 @@ import {
   ScrollView,
   Modal,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Calendar, ChevronDown } from 'lucide-react-native';
 import { Calendar as RNCalendar, LocaleConfig } from 'react-native-calendars';
@@ -49,6 +51,23 @@ export default function ApplyLeave() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [showCalendar, setShowCalendar] = useState<'from' | 'to' | null>(null);
   const [name, setName] = useState('');
+  // Define the Role type
+  type Role = {
+    label: string;
+    value: string;
+  };
+  
+    const [roles, setRoles] = useState<Role[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState('');
+  // Define the User type
+  type User = {
+    id: number;
+    name: string;
+  };
+  
+  const [users, setUsers] = useState<User[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -64,6 +83,59 @@ export default function ApplyLeave() {
 
     fetchUserId();
   }, []);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        setLoadingRoles(true);
+        const response = await fetch('https://demo-expense.geomaticxevs.in/ET-api/add_leaves.php?fetch_roles=true');
+        const data: { status: string; message?: string; roles?: Role[] } = await response.json();
+
+        if (response.ok && data.status === 'success' && data.roles) {
+          setRoles(data.roles);
+        } else {
+          Alert.alert('Success', data.message || 'Failed to load roles');
+        }
+      } catch (error) {
+        Alert.alert('Submitted Successfully');
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
+
+    fetchRoles();
+  }, []);
+
+  useEffect(() => {
+    if (selectedRoleId) {
+      fetchUsersByRole(selectedRoleId);
+    }
+  }, [selectedRoleId]);
+
+  const fetchUsersByRole = async (roleId: string) => {
+    try {
+      setLoadingUsers(true);
+      setUsers([]);
+      setSubmittedTo('');
+
+      const response = await fetch(`https://demo-expense.geomaticxevs.in/ET-api/add_leaves.php?role_id=${roleId}`);
+      const result: { status: string; message?: string; users?: { id: number; name: string }[] } = await response.json();
+
+      if (response.ok && result.status === 'success' && result.users) {
+        const userOptions = result.users.map(user => ({
+          id: user.id,
+          name: user.name
+        }));
+        setUsers(userOptions);
+      } else {
+        Alert.alert('Error', result.message || 'No users found for this role');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Network error. Please try again.');
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!leaveTitle || !leaveGround || !fromDate || !toDate || !leaveDescription || !submittedTo) {
@@ -83,8 +155,11 @@ export default function ApplyLeave() {
       leave_track_created_by: userId,
     };
 
+    // Log the data being submitted
+    console.log('Submitting Leave Data:', leaveData);
+
     try {
-      const response = await fetch('http://demo-expense.geomaticxevs.in/ET-api/add_leaves.php', {
+      const response = await fetch('https://demo-expense.geomaticxevs.in/ET-api/add_leaves.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -92,13 +167,16 @@ export default function ApplyLeave() {
         body: JSON.stringify(leaveData),
       });
 
+      console.log('Response:', response); // Log the full response object
+
       const result = await response.json();
+      console.log('Result:', result); // Log the parsed JSON result
 
       if (response.ok && result.status === 'success') {
         setResponseMessage(result.message);
-        setFirstName(result.user.first_name);
-        setMiddleName(result.user.middle_name);
-        setLastName(result.user.last_name);
+        setFirstName(result.user?.first_name || '');
+        setMiddleName(result.user?.middle_name || '');
+        setLastName(result.user?.last_name || '');
         setIsSubmitted(true);
         setIsSuccess(true);
       } else {
@@ -107,6 +185,7 @@ export default function ApplyLeave() {
         setIsSuccess(false);
       }
     } catch (error) {
+      console.error('Error:', error); // Log the error
       setResponseMessage('Error: Network error. Please try again.');
       setIsSubmitted(true);
       setIsSuccess(false);
@@ -139,13 +218,7 @@ export default function ApplyLeave() {
           >
             {responseMessage}
           </Text>
-          {isSuccess && (
-            <View style={styles.userDetails}>
-              <Text style={styles.userDetailText}>First Name: {firstName}</Text>
-              <Text style={styles.userDetailText}>Middle Name: {middleName || 'N/A'}</Text>
-              <Text style={styles.userDetailText}>Last Name: {lastName}</Text>
-            </View>
-          )}
+          
           <TouchableOpacity style={styles.backButton} onPress={handleBackToForm}>
             <Text style={styles.backButtonText}>Back to Form</Text>
           </TouchableOpacity>
@@ -171,7 +244,7 @@ export default function ApplyLeave() {
 
             <View style={styles.row}>
               <View style={[styles.formGroup, { flex: 1 }]}>
-                <Text style={styles.label}>First Name</Text>
+                <Text style={styles.label}>First Name *</Text>
                 <TextInput
                   style={styles.input}
                   value={firstName}
@@ -189,7 +262,7 @@ export default function ApplyLeave() {
                 />
               </View>
               <View style={[styles.formGroup, { flex: 1 }]}>
-                <Text style={styles.label}>Last Name</Text>
+                <Text style={styles.label}>Last Name *</Text>
                 <TextInput
                   style={styles.input}
                   value={lastName}
@@ -283,26 +356,37 @@ export default function ApplyLeave() {
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Submission Details</Text>
             
-            <View style={styles.row}>
-              <View style={[styles.formGroup, { flex: 1 }]}>
-                <Text style={styles.label}>Submitted To *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Select Category"
-                  value={submittedTo}
-                  onChangeText={setSubmittedTo}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Recipient Role *</Text>
+              {loadingRoles ? (
+                <ActivityIndicator size="small" color="#007AFF" />
+              ) : (
+                <RNPickerSelect
+                  onValueChange={(value) => setSelectedRoleId(value)}
+                  items={roles}
+                  value={selectedRoleId}
+                  placeholder={{ label: 'Select a role...', value: null }}
+                  style={pickerSelectStyles}
                 />
-              </View>
-              <View style={[styles.formGroup, { flex: 1 }]}>
-                <Text style={styles.label}>Name *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Your name"
-                />
-              </View>
+              )}
             </View>
+
+            {selectedRoleId && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Recipient Name *</Text>
+                {loadingUsers ? (
+                  <ActivityIndicator size="small" color="#007AFF" />
+                ) : (
+                  <RNPickerSelect
+                    onValueChange={(value) => setSubmittedTo(value)}
+                    items={users.map(user => ({ label: user.name, value: user.id }))}
+                    value={submittedTo}
+                    placeholder={{ label: 'Select a recipient...', value: null }}
+                    style={pickerSelectStyles}
+                  />
+                )}
+              </View>
+            )}
           </View>
 
           <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
@@ -403,13 +487,13 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   formContainer: {
-    padding: 15,
+    padding: 20,
   },
   sectionContainer: {
-    marginBottom: 21,
+    marginBottom: 24,
     backgroundColor: 'white',
     borderRadius: 12,
-    padding: 15,
+    padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -445,7 +529,7 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: 'white',
-    padding: 11,
+    padding: 12,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e2e8f0',

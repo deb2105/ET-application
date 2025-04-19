@@ -111,7 +111,7 @@ const UserAnalytics = () => {
     async (dataType: "users" | "expenses", dateRange: string) => {
       try {
         const response = await fetch(
-          `http://demo-expense.geomaticxevs.in/ET-api/admin_analytics.php?dataType=${dataType}&range=${dateRange}`
+          `https://demo-expense.geomaticxevs.in/ET-api/admin_analytics.php?dataType=${dataType}&range=${dateRange}`
         );
         const data = await response.json();
         if (dataType === "users") {

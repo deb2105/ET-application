@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   FlatList,
   StyleSheet,
   Pressable,
@@ -12,33 +13,61 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Check, X, ChevronLeft, ChevronRight } from 'lucide-react-native';
 
-// Define TypeScript types for requisitions
+// Define TypeScript types for API response and requisitions
+type ApiResponse = {
+  current_date: string;
+  requisitions: Array<{
+    requisition_id: string;
+    user_name: string;
+    requisition_title: string;
+    requisition_amount: string;
+    requisition_status: number | null;
+  }>;
+};
+
 type Requisition = {
-  requisition_id: string; // Unique identifier from the server
-  user_name: string; // Username from the API
-  requisition_title: string; // Requisition title from the API
-  requisition_status: number | null; // Status (null: Pending, 0: Rejected, 1: Approved)
+  requisition_id: string;
+  user_name: string;
+  requisition_title: string;
+  requisition_amount: string;
+  requisition_status: number | null;  // null: pending, 0: rejected, 1: approved, 2: partial
 };
 
 export default function Requisitions() {
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const ITEMS_PER_PAGE = 10; // Number of requisitions per page
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const ITEMS_PER_PAGE = 10;
 
-  // Fetch requisitions from the API
+  // Add useEffect for auto-refresh
+  useEffect(() => {
+    // Trigger refresh after 1 second
+    const timer = setTimeout(() => {
+      setRefreshKey((prevKey) => prevKey + 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []); // Run only once when component mounts
+
+  // Modify the existing useEffect to depend on refreshKey
   useEffect(() => {
     const fetchRequisitions = async () => {
       try {
         const response = await fetch(
-          'http://demo-expense.geomaticxevs.in/ET-api/manage_requisitions.php'
+          'https://demo-expense.geomaticxevs.in/ET-api/manage_requisitions.php'
         );
-        const data = await response.json();
+        const data: ApiResponse = await response.json();
 
-        if (Array.isArray(data)) {
-          setRequisitions(data); // Use the data directly from the server
+        if (data.requisitions) {
+          // Sort requisitions by ID in descending order (assuming newer IDs are larger)
+          const sortedRequisitions = data.requisitions.sort((a, b) =>
+            parseInt(b.requisition_id) - parseInt(a.requisition_id)
+          );
+          setRequisitions(sortedRequisitions);
         } else {
-          Alert.alert('Error', data.message || 'Failed to fetch requisitions');
+          Alert.alert('Error', 'Failed to fetch requisitions');
         }
       } catch (error) {
         console.error('Error fetching requisitions:', error);
@@ -52,26 +81,31 @@ export default function Requisitions() {
     };
 
     fetchRequisitions();
-  }, []);
+  }, [refreshKey]); // Add refreshKey as dependency
 
   // Handle Approve or Reject action
   const handleAction = async (
     requisition_id: string,
-    action: 'approve' | 'reject'
+    action: 'approve' | 'reject' | 'partial'
   ) => {
     try {
-      const userId = await AsyncStorage.getItem('userid'); // Get user ID from AsyncStorage
+      const userId = await AsyncStorage.getItem('userid');
       if (!userId) {
         Alert.alert('Error', 'User ID not found');
         return;
       }
 
-      console.log('Requisition ID:', requisition_id);
-      console.log('Action:', action);
-      console.log('User ID:', userId);
+      // Calculate status code
+      const statusCode = 
+        action === 'approve' ? 1 : 
+        action === 'partial' ? 2 : 
+        0;
+
+      // Convert 'partial' to 'approve' for API compatibility
+      const apiAction = action === 'partial' ? 'approve' : action;
 
       const response = await fetch(
-        'http://demo-expense.geomaticxevs.in/ET-api/approve_reject_requisitions.php',
+        'https://demo-expense.geomaticxevs.in/ET-api/approve_reject_requisitions.php',
         {
           method: 'POST',
           headers: {
@@ -79,27 +113,26 @@ export default function Requisitions() {
           },
           body: JSON.stringify({
             requisition_id,
-            action,
+            action: apiAction,  // Send 'approve' instead of 'partial'
             user_id: parseInt(userId, 10),
+            status: statusCode  // This will be 2 for partial approval
           }),
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       const data = await response.json();
       if (data.status === 'success') {
-        Alert.alert('Success', data.message);
+        Alert.alert(
+          'Success', 
+          `Requisition ${action === 'partial' ? 'partially approved' : action + 'd'} successfully`
+        );
 
-        // Update the local state to reflect the changes
         setRequisitions((prevRequisitions) =>
           prevRequisitions.map((req) =>
             req.requisition_id === requisition_id
               ? {
                   ...req,
-                  requisition_status: action === 'approve' ? 1 : 0, // Update status
+                  requisition_status: statusCode
                 }
               : req
           )
@@ -113,10 +146,16 @@ export default function Requisitions() {
     }
   };
 
-  // Pagination logic
-  const totalPages = Math.ceil(requisitions.length / ITEMS_PER_PAGE);
+  // Add search filter
+  const filteredRequisitions = requisitions.filter(requisition => 
+    requisition.user_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    requisition.requisition_title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Update pagination logic to use filtered results
+  const totalPages = Math.ceil(filteredRequisitions.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedRequisitions = requisitions.slice(
+  const paginatedRequisitions = filteredRequisitions.slice(
     startIndex,
     startIndex + ITEMS_PER_PAGE
   );
@@ -127,6 +166,7 @@ export default function Requisitions() {
       <View style={styles.infoContainer}>
         <Text style={styles.userName}>{item.user_name}</Text>
         <Text style={styles.request}>{item.requisition_title}</Text>
+        <Text style={styles.amount}>₹{item.requisition_amount}</Text>
         <Text
           style={[
             styles.status,
@@ -134,6 +174,8 @@ export default function Requisitions() {
               ? styles.pending
               : item.requisition_status === 1
               ? styles.approved
+              : item.requisition_status === 2
+              ? styles.partial
               : styles.rejected,
           ]}
         >
@@ -141,6 +183,8 @@ export default function Requisitions() {
             ? 'Pending'
             : item.requisition_status === 1
             ? 'Approved'
+            : item.requisition_status === 2
+            ? 'Partially Approved'
             : 'Rejected'}
         </Text>
       </View>
@@ -152,6 +196,13 @@ export default function Requisitions() {
           >
             <Check color="white" size={20} />
             <Text style={styles.buttonText}>Approve</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.button, styles.partial_approve]}
+            onPress={() => handleAction(item.requisition_id, 'partial')}
+          >
+            <Check color="white" size={20} />
+            <Text style={styles.buttonText}>Partial</Text>
           </Pressable>
           <Pressable
             style={[styles.button, styles.reject]}
@@ -177,6 +228,18 @@ export default function Requisitions() {
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>Manage Requisitions</Text>
+      
+      {/* Add Search Bar */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by name or title..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholderTextColor="#94A3B8"
+        />
+      </View>
+
       <FlatList
         data={paginatedRequisitions}
         renderItem={renderRequisition}
@@ -235,6 +298,20 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     marginBottom: 20,
   },
+  searchContainer: {
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  searchInput: {
+    backgroundColor: 'white',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    fontSize: 16,
+    color: '#1E293B',
+  },
   listContainer: {
     gap: 20,
   },
@@ -265,6 +342,12 @@ const styles = StyleSheet.create({
     color: '#475569',
     marginVertical: 4,
   },
+  amount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#059669',
+    marginVertical: 2,
+  },
   status: {
     fontSize: 14,
     fontWeight: 'bold',
@@ -275,22 +358,33 @@ const styles = StyleSheet.create({
   approved: {
     color: '#16A34A',
   },
+  partial: {
+    color: '#F59E0B',
+  },
   rejected: {
     color: '#DC2626',
   },
   actions: {
-    flexDirection: 'row',
-    gap: 10,
+    flexDirection: 'column',
+    gap: 8,
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    padding: 10,
+    gap: 4,
+    padding: 8,
     borderRadius: 8,
   },
   approve: {
     backgroundColor: '#16A34A',
+  },
+  partial_approve: {
+    backgroundColor: '#F59E0B',  // Amber color for partial approval
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    padding: 8,
+    borderRadius: 8,
   },
   reject: {
     backgroundColor: '#DC2626',
